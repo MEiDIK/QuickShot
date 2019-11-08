@@ -56,22 +56,30 @@ public class PixelShot {
     private String filename = String.valueOf(System.currentTimeMillis());
     private String fileExtension = EXTENSION_JPG;
     private int jpgQuality = JPG_MAX_QUALITY;
-
+    private Bitmap bitmap;
     private PixelShotListener listener;
     private View view;
 
     //TODO Replacement for async
-    //TODO Add method to add Bitmaps directly in constructor
     //TODO Add method for private storage
     //TODO Clean up code and push changes.
+    //TODO Support for Private storage
 
 
     private PixelShot(@NonNull View view) {
         this.view = view;
     }
 
+    private PixelShot(@NonNull Bitmap bitmap) {
+        this.bitmap = bitmap;
+    }
+
     public static PixelShot of(@NonNull View view) {
         return new PixelShot(view);
+    }
+
+    public static PixelShot of(@NonNull Bitmap bitmap) {
+        return new PixelShot(bitmap);
     }
 
     public PixelShot setFilename(String filename) {
@@ -123,10 +131,10 @@ public class PixelShot {
         }
     }
 
-
-    private Bitmap getViewBitmap() {
-        Bitmap bitmap;
-        if (view instanceof TextureView) {
+    private Bitmap getBitmap() {
+        if (bitmap != null) {
+            return bitmap;
+        } else if (view instanceof TextureView) {
             bitmap = ((TextureView) view).getBitmap();
             Canvas canvas = new Canvas(bitmap);
             view.draw(canvas);
@@ -150,12 +158,11 @@ public class PixelShot {
      */
 
     public void save() throws NullPointerException {
-
         if (!Utils.isStorageAvailable()) {
-            throw new IllegalStateException("Storage was not ready for use");
+            throw new IllegalStateException("Storage not available for use");
         }
         if (!Utils.isPermissionGranted(getAppContext())) {
-            throw new SecurityException("Permission WRITE_EXTERNAL_STORAGE is missing");
+            throw new SecurityException("Permission WRITE_EXTERNAL_STORAGE not granted");
         }
 
         if (view instanceof SurfaceView) {
@@ -167,14 +174,14 @@ public class PixelShot {
 
                 @Override
                 public void onSurfaceBitmapError() {
-                    Log.d(TAG, "Couldn't create a bitmap of the SurfaceView");
+                    Log.d(TAG, "Couldn't create bitmap of the SurfaceView");
                     if (listener != null) {
                         listener.onPixelShotFailed();
                     }
                 }
             });
         } else {
-            new BitmapSaver(getAppContext(), getViewBitmap(), path, filename, fileExtension, jpgQuality, listener).execute();
+            new BitmapSaver(getAppContext(), getBitmap(), path, filename, fileExtension, jpgQuality, listener).execute();
         }
     }
 
@@ -197,7 +204,6 @@ public class PixelShot {
         //Create the Bitmap and Canvas to draw on
         Bitmap recyclerViewBitmap = Bitmap.createBitmap(recyclerView.getMeasuredWidth(), measuredItemHeight * itemCount, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(recyclerViewBitmap);
-
 
         //Draw RecyclerView Background:
         if (recyclerView.getBackground() != null) {
