@@ -60,8 +60,10 @@ public class PixelShot {
     private PixelShotListener listener;
     private View view;
 
-    //TODO Replacement for async
-    //TODO Add method for private storage
+    //TODO Replacement for AsyncTask
+    //TODO Add method for private/internal storage
+    //TODO Add some JavaDoc
+    //TODO prettify code
     //TODO Clean up code and push changes.
     //TODO Support for Private storage
 
@@ -302,7 +304,7 @@ public class PixelShot {
             String fullPath = Environment.DIRECTORY_PICTURES + File.separator + path;
             ContentResolver resolver = weakContext.get().getContentResolver();
             ContentValues contentValues = new ContentValues();
-            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename); // filename + extensions or not?
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, fullPath);
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
