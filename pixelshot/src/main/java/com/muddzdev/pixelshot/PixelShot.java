@@ -1,5 +1,7 @@
 package com.muddzdev.pixelshot;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -10,6 +12,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.view.TextureView;
@@ -57,6 +60,12 @@ public class PixelShot {
     private PixelShotListener listener;
     private View view;
 
+    //TODO Replacement for async
+    //TODO Add method to add Bitmaps directly in constructor
+    //TODO Add method for private storage
+    //TODO Clean up code and push changes.
+
+
     private PixelShot(@NonNull View view) {
         this.view = view;
     }
@@ -78,6 +87,10 @@ public class PixelShot {
     public PixelShot setResultListener(PixelShotListener listener) {
         this.listener = listener;
         return this;
+    }
+
+    private void setFileExtension(String fileExtension) {
+        this.fileExtension = fileExtension;
     }
 
     public PixelShot toJPG() {
@@ -102,13 +115,43 @@ public class PixelShot {
         return this;
     }
 
+    private Context getAppContext() {
+        if (view == null) {
+            throw new NullPointerException("The provided View was null");
+        } else {
+            return view.getContext().getApplicationContext();
+        }
+    }
+
+
+    private Bitmap getViewBitmap() {
+        Bitmap bitmap;
+        if (view instanceof TextureView) {
+            bitmap = ((TextureView) view).getBitmap();
+            Canvas canvas = new Canvas(bitmap);
+            view.draw(canvas);
+            canvas.setBitmap(null);
+            return bitmap;
+        } else if (view instanceof RecyclerView) {
+            bitmap = generateLongBitmap((RecyclerView) view);
+            return bitmap;
+        } else {
+            bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            view.draw(canvas);
+            canvas.setBitmap(null);
+            return bitmap;
+        }
+    }
+
+
     /**
      * @throws NullPointerException If View is null.
      */
 
     public void save() throws NullPointerException {
 
-        if (!Utils.isStorageReady()) {
+        if (!Utils.isStorageAvailable()) {
             throw new IllegalStateException("Storage was not ready for use");
         }
         if (!Utils.isPermissionGranted(getAppContext())) {
@@ -132,19 +175,6 @@ public class PixelShot {
             });
         } else {
             new BitmapSaver(getAppContext(), getViewBitmap(), path, filename, fileExtension, jpgQuality, listener).execute();
-        }
-    }
-
-
-    private void setFileExtension(String fileExtension) {
-        this.fileExtension = fileExtension;
-    }
-
-    private Context getAppContext() {
-        if (view == null) {
-            throw new NullPointerException("The provided View was null");
-        } else {
-            return view.getContext().getApplicationContext();
         }
     }
 
@@ -186,7 +216,7 @@ public class PixelShot {
             viewHolderTopPadding += measuredItemHeight;
             viewHolder.itemView.setDrawingCacheEnabled(false);
             viewHolder.itemView.destroyDrawingCache();
-            
+
 //            //TODO This should work but doesn't
 //            recyclerView.getAdapter().onBindViewHolder(viewHolder, i);
 //            viewHolder.itemView.draw(canvas);
@@ -195,28 +225,6 @@ public class PixelShot {
         }
         return recyclerViewBitmap;
     }
-
-
-    private Bitmap getViewBitmap() {
-        Bitmap bitmap;
-        if (view instanceof TextureView) {
-            bitmap = ((TextureView) view).getBitmap();
-            Canvas canvas = new Canvas(bitmap);
-            view.draw(canvas);
-            canvas.setBitmap(null);
-            return bitmap;
-        } else if (view instanceof RecyclerView) {
-            bitmap = generateLongBitmap((RecyclerView) view);
-            return bitmap;
-        } else {
-            bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
-            Canvas canvas = new Canvas(bitmap);
-            view.draw(canvas);
-            canvas.setBitmap(null);
-            return bitmap;
-        }
-    }
-
 
     public interface PixelShotListener {
         void onPixelShotSuccess(String path);
@@ -229,12 +237,12 @@ public class PixelShot {
 
         private final WeakReference<Context> weakContext;
         private Handler handler = new Handler(Looper.getMainLooper());
+        private PixelShotListener listener;
         private Bitmap bitmap;
         private String path;
         private String filename;
         private String fileExtension;
         private int jpgQuality;
-        private PixelShotListener listener;
         private File file;
 
         BitmapSaver(Context context, Bitmap bitmap, String path, String filename, String fileExtension, int jpgQuality, PixelShotListener listener) {
@@ -259,14 +267,11 @@ public class PixelShot {
             }
         }
 
-        @Override
-        protected Void doInBackground(Void... voids) {
+        private void saveLegacy() {
             File directory = new File(Environment.getExternalStorageDirectory(), path);
             if (!directory.exists() && !directory.mkdirs()) {
                 cancelTask();
-                return null;
             }
-
             file = new File(directory, filename + fileExtension);
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
                 switch (fileExtension) {
@@ -280,17 +285,57 @@ public class PixelShot {
             } catch (Exception e) {
                 e.printStackTrace();
                 cancelTask();
+            } finally {
+                bitmap.recycle();
+                bitmap = null;
             }
+        }
 
-            bitmap.recycle();
-            bitmap = null;
+
+        private void saveScopedStorage() {
+            String fullPath = Environment.DIRECTORY_PICTURES + File.separator + path;
+            ContentResolver resolver = weakContext.get().getContentResolver();
+            ContentValues contentValues = new ContentValues();
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
+            contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
+            contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, fullPath);
+            Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
+            if (imageUri != null) {
+                try (OutputStream out = resolver.openOutputStream(imageUri)) {
+                    switch (fileExtension) {
+                        case EXTENSION_JPG:
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, jpgQuality, out);
+                            break;
+                        case EXTENSION_PNG:
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 0, out);
+                            break;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    cancelTask();
+                } finally {
+                    bitmap.recycle();
+                    bitmap = null;
+                }
+            }
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            if (Utils.isAndroidQ()) {
+                saveScopedStorage();
+            } else {
+                saveLegacy();
+            }
             return null;
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            MediaScannerConnection.scanFile(weakContext.get(), new String[]{file.getPath()}, null, this);
+            if (file != null) {
+                MediaScannerConnection.scanFile(weakContext.get(), new String[]{file.getPath()}, null, this);
+            }
             weakContext.clear();
         }
 
