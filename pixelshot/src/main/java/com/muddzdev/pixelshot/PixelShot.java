@@ -62,10 +62,8 @@ public class PixelShot {
 
     //TODO Replacement for AsyncTask
     //TODO Add method for private/internal storage
-    //TODO Add some JavaDoc
     //TODO prettify code
     //TODO Clean up code and push changes.
-    //TODO Support for Private storage
 
 
     private PixelShot(@NonNull View view) {
@@ -84,11 +82,19 @@ public class PixelShot {
         return new PixelShot(bitmap);
     }
 
+    /**
+     * @param filename if not set, a timestamp will be set as the filename at the time of execution
+     */
     public PixelShot setFilename(String filename) {
         this.filename = filename;
         return this;
     }
 
+    /**
+     * Starting from Android Q/API 29 files will now be saved relative to ../storage/Pictures
+     * Directories which don't already exist will automatically be created.
+     * @param path name of the directory to store the image
+     */
     public PixelShot setPath(String path) {
         this.path = path;
         return this;
@@ -103,23 +109,35 @@ public class PixelShot {
         this.fileExtension = fileExtension;
     }
 
+    /**
+     *Save as .jpg format in highest quality
+     */
     public PixelShot toJPG() {
         jpgQuality = JPG_MAX_QUALITY;
         setFileExtension(EXTENSION_JPG);
         return this;
     }
 
+    /**
+     *Save as .jpg format in a custom quality between 0-100
+     */
     public PixelShot toJPG(int jpgQuality) {
         this.jpgQuality = jpgQuality;
         setFileExtension(EXTENSION_JPG);
         return this;
     }
 
+    /**
+     *Save as .png format for lossless compression
+     */
     public PixelShot toPNG() {
         setFileExtension(EXTENSION_PNG);
         return this;
     }
 
+    /**
+     * Save as .nomedia for making the picture invisible for photo viewer apps and galleries.
+     */
     public PixelShot toNomedia() {
         setFileExtension(EXTENSION_NOMEDIA);
         return this;
@@ -156,7 +174,7 @@ public class PixelShot {
 
 
     /**
-     * @throws NullPointerException If View is null.
+     * @throws NullPointerException if View is null.
      */
 
     public void save() throws NullPointerException {
@@ -304,7 +322,7 @@ public class PixelShot {
             String fullPath = Environment.DIRECTORY_PICTURES + File.separator + path;
             ContentResolver resolver = weakContext.get().getContentResolver();
             ContentValues contentValues = new ContentValues();
-            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename); // filename + extensions or not?
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename); //TODO filename + extensions or not?
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, fullPath);
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
