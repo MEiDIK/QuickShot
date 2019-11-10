@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 
@@ -52,16 +53,15 @@ public class PixelShot {
     private static final String EXTENSION_NOMEDIA = ".nomedia";
     private static final int JPG_MAX_QUALITY = 100;
 
-    private String path = Environment.DIRECTORY_PICTURES;
+    private PixelShotListener listener;
+    private String path;
     private String filename = String.valueOf(System.currentTimeMillis());
     private String fileExtension = EXTENSION_JPG;
     private int jpgQuality = JPG_MAX_QUALITY;
     private Bitmap bitmap;
-    private PixelShotListener listener;
     private View view;
 
     //TODO Replacement for AsyncTask
-    //TODO Add method for private/internal storage
     //TODO prettify code
     //TODO Clean up code and push changes.
 
@@ -91,9 +91,10 @@ public class PixelShot {
     }
 
     /**
-     * Starting from Android Q/API 29 files will now be saved relative to ../storage/Pictures
+     * For devices running Android Q/API-29 files will now always be saved relative to ../storage/Pictures
      * Directories which don't already exist will automatically be created.
-     * @param path name of the directory to store the image
+     *
+     * @param path name of the directory. If not set, the path will be set to /Pictures
      */
     public PixelShot setPath(String path) {
         this.path = path;
@@ -110,7 +111,7 @@ public class PixelShot {
     }
 
     /**
-     *Save as .jpg format in highest quality
+     * Save as .jpg format in highest quality
      */
     public PixelShot toJPG() {
         jpgQuality = JPG_MAX_QUALITY;
@@ -119,7 +120,7 @@ public class PixelShot {
     }
 
     /**
-     *Save as .jpg format in a custom quality between 0-100
+     * Save as .jpg format in a custom quality between 0-100
      */
     public PixelShot toJPG(int jpgQuality) {
         this.jpgQuality = jpgQuality;
@@ -128,7 +129,7 @@ public class PixelShot {
     }
 
     /**
-     *Save as .png format for lossless compression
+     * Save as .png format for lossless compression
      */
     public PixelShot toPNG() {
         setFileExtension(EXTENSION_PNG);
@@ -293,8 +294,12 @@ public class PixelShot {
             }
         }
 
+
         private void saveLegacy() {
-            File directory = new File(Environment.getExternalStorageDirectory(), path);
+            if (path == null) {
+                path = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES;
+            }
+            File directory = new File(path);
             if (!directory.exists() && !directory.mkdirs()) {
                 cancelTask();
             }
@@ -318,7 +323,7 @@ public class PixelShot {
         }
 
 
-        private void saveScopedStorage() {
+        private void saveScoopedStorage() {
             String fullPath = Environment.DIRECTORY_PICTURES + File.separator + path;
             ContentResolver resolver = weakContext.get().getContentResolver();
             ContentValues contentValues = new ContentValues();
@@ -349,7 +354,7 @@ public class PixelShot {
         @Override
         protected Void doInBackground(Void... voids) {
             if (Utils.isAndroidQ()) {
-                saveScopedStorage();
+                saveScoopedStorage();
             } else {
                 saveLegacy();
             }
@@ -360,18 +365,29 @@ public class PixelShot {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             if (file != null) {
-                MediaScannerConnection.scanFile(weakContext.get(), new String[]{file.getPath()}, null, this);
+                Log.d(TAG, "MediaScanner scanning:");
+                Log.d(TAG, file.getAbsolutePath());
+                Log.d(TAG, file.getPath());
+                try {
+                    Log.d(TAG, file.getCanonicalPath());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                MediaScannerConnection.scanFile(weakContext.get(), new String[]{file.getAbsolutePath()}, null, this);
             }
             weakContext.clear();
         }
 
         @Override
         public void onScanCompleted(final String path, final Uri uri) {
+
+            Log.d(TAG, "onScanCompleted: " + path + " | " + uri);
+
             if (listener != null) {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if (uri != null) {
+                        if (uri != null || path != null) {
                             Log.i(TAG, "Saved image to path: " + path);
                             Log.i(TAG, "Saved image to URI: " + uri);
                             listener.onPixelShotSuccess(path);

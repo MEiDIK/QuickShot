@@ -2,23 +2,23 @@ package com.muddzdev.pixelshot.demo;
 
 import android.Manifest;
 import android.os.Bundle;
-
-import com.google.android.material.tabs.TabLayout;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.PermissionChecker;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-
-import android.util.Log;
+import android.os.Environment;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
+
+import com.google.android.material.tabs.TabLayout;
 import com.muddzdev.pixelshot.PixelShot;
 import com.muddzdev.pixelshot.demo.fragments.BaseFragment;
+
+import java.io.File;
 
 
 public class MainActivity extends AppCompatActivity implements PixelShot.PixelShotListener {
@@ -60,16 +60,25 @@ public class MainActivity extends AppCompatActivity implements PixelShot.PixelSh
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_jpg:
-                PixelShot.of(getTargetView()).setPath("PixelShot").setResultListener(this).save();
+                PixelShot.of(getTargetView()).setPath(getExternalStorage()).setResultListener(this).save();
                 break;
             case R.id.menu_pgn:
-                PixelShot.of(getTargetView()).setPath("PixelShot").setResultListener(this).toPNG().save();
+                PixelShot.of(getTargetView()).setPath(getInternalStorage()).setResultListener(this).toPNG().save();
                 break;
             case R.id.menu_nomedia:
                 PixelShot.of(getTargetView()).setResultListener(this).toNomedia().save();
                 break;
         }
         return true;
+    }
+
+
+    private String getExternalStorage() {
+        return getExternalFilesDir(null) + File.separator + Environment.DIRECTORY_PICTURES + File.separator + "PixelShot";
+    }
+
+    private String getInternalStorage() {
+        return getFilesDir() + File.separator + "PixelShot";
     }
 
     private View getTargetView() {
