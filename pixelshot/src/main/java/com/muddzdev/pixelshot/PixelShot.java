@@ -54,13 +54,14 @@ public class PixelShot {
     private static final int JPG_MAX_QUALITY = 100;
 
     private PixelShotListener listener;
-    private String path;
-    private String filename = String.valueOf(System.currentTimeMillis());
-    private String fileExtension = EXTENSION_JPG;
     private int jpgQuality = JPG_MAX_QUALITY;
+    private String fileExtension = EXTENSION_JPG;
+    private String filename = String.valueOf(System.currentTimeMillis());
+    private String path;
     private Bitmap bitmap;
     private View view;
 
+    //TODO test if files is deleted in internal storages.
     //TODO Replacement for AsyncTask
     //TODO prettify code
     //TODO Clean up code and push changes.
@@ -294,7 +295,6 @@ public class PixelShot {
             }
         }
 
-
         private void saveLegacy() {
             if (path == null) {
                 path = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES;
@@ -324,12 +324,21 @@ public class PixelShot {
 
 
         private void saveScoopedStorage() {
-            String fullPath = Environment.DIRECTORY_PICTURES + File.separator + path;
+
+
+            String directory;
+            if (path == null) {
+                directory = Environment.DIRECTORY_PICTURES;
+            } else {
+                directory = Environment.DIRECTORY_PICTURES + File.separator + path;
+            }
+
             ContentResolver resolver = weakContext.get().getContentResolver();
             ContentValues contentValues = new ContentValues();
-            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename); //TODO filename + extensions or not?
+            contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
-            contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, fullPath);
+            contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
+
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             if (imageUri != null) {
                 try (OutputStream out = resolver.openOutputStream(imageUri)) {
