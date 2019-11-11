@@ -9,6 +9,7 @@ import android.graphics.drawable.Drawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -19,6 +20,7 @@ import android.view.TextureView;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.BufferedOutputStream;
@@ -58,13 +60,12 @@ public class PixelShot {
     private String fileExtension = EXTENSION_JPG;
     private String filename = String.valueOf(System.currentTimeMillis());
     private String path;
+    private boolean internal;
     private Bitmap bitmap;
     private View view;
 
-    //TODO test if files is deleted in internal storages.
-    //TODO Replacement for AsyncTask
-    //TODO prettify code
-    //TODO Clean up code and push changes.
+    //TODO support internal files saving.
+    //TODO remove non-responsible code
 
 
     private PixelShot(@NonNull View view) {
@@ -84,7 +85,7 @@ public class PixelShot {
     }
 
     /**
-     * @param filename if not set, a timestamp will be set as the filename at the time of execution
+     * @param filename if not set, filename will default to a timestamp from {@link System#currentTimeMillis} at time of execution.
      */
     public PixelShot setFilename(String filename) {
         this.filename = filename;
@@ -92,16 +93,27 @@ public class PixelShot {
     }
 
     /**
-     * For devices running Android Q/API-29 files will now always be saved relative to ../storage/Pictures
-     * Directories which don't already exist will automatically be created.
-     *
-     * @param path name of the directory. If not set, the path will be set to /Pictures
+     * For devices running Android Q/API 29, files will now be saved relative to /storage/Pictures.
+     * <p>Directories which don't already exist will be automatically created.</p>
+     * @param path if not set, path will default to /Pictures regardless of API level
      */
     public PixelShot setPath(String path) {
         this.path = path;
         return this;
     }
 
+    /**
+     * Only for devices running Android Q/API 29!
+     * @param path relative to the apps private storage
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    public PixelShot setInternalPath(String path) {
+        this.path = path;
+        this.internal = true;
+        return this;
+    }
+
+    //TODO javadoc here or not?
     public PixelShot setResultListener(PixelShotListener listener) {
         this.listener = listener;
         return this;
@@ -180,9 +192,13 @@ public class PixelShot {
      */
 
     public void save() throws NullPointerException {
+
+        //TODO Is it the libraries responsibility to handle this?
         if (!Utils.isStorageAvailable()) {
             throw new IllegalStateException("Storage not available for use");
         }
+
+        //TODO Is it the libraries responsibility to handle this?
         if (!Utils.isPermissionGranted(getAppContext())) {
             throw new SecurityException("Permission WRITE_EXTERNAL_STORAGE not granted");
         }
@@ -208,6 +224,7 @@ public class PixelShot {
     }
 
 
+    //TODO Is it the libraries responsibility to handle this?
     private Bitmap generateLongBitmap(RecyclerView recyclerView) {
 
         int itemCount = recyclerView.getAdapter().getItemCount();
@@ -259,7 +276,6 @@ public class PixelShot {
 
         void onPixelShotFailed();
     }
-
 
     static class BitmapSaver extends AsyncTask<Void, Void, Void> implements MediaScannerConnection.OnScanCompletedListener {
 
@@ -335,7 +351,6 @@ public class PixelShot {
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
-
             if (imageUri != null) {
                 try (OutputStream out = resolver.openOutputStream(imageUri)) {
                     switch (fileExtension) {
@@ -385,9 +400,7 @@ public class PixelShot {
 
         @Override
         public void onScanCompleted(final String path, final Uri uri) {
-
             Log.d(TAG, "onScanCompleted: " + path + " | " + uri);
-
             if (listener != null) {
                 handler.post(new Runnable() {
                     @Override
@@ -397,7 +410,9 @@ public class PixelShot {
                             Log.i(TAG, "Saved image to URI: " + uri);
                             listener.onPixelShotSuccess(path);
                         } else {
-                            listener.onPixelShotFailed();
+                            if (!file.exists()) {
+                                listener.onPixelShotFailed();
+                            }
                         }
                     }
                 });
