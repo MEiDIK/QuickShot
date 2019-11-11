@@ -334,8 +334,8 @@ public class PixelShot {
             contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
-
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
+
             if (imageUri != null) {
                 try (OutputStream out = resolver.openOutputStream(imageUri)) {
                     switch (fileExtension) {
