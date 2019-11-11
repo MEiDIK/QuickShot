@@ -63,7 +63,7 @@ public class MainActivity extends AppCompatActivity implements PixelShot.PixelSh
                 PixelShot.of(getTargetView()).setPath("Muddz").setResultListener(this).save();
                 break;
             case R.id.menu_pgn:
-                PixelShot.of(getTargetView()).setPath("Muddz/Hey/Lol").setResultListener(this).toPNG().save();
+                PixelShot.of(getTargetView()).setResultListener(this).toPNG().save();
                 break;
             case R.id.menu_nomedia:
                 PixelShot.of(getTargetView()).setResultListener(this).toNomedia().save();

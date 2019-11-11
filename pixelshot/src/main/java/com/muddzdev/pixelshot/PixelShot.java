@@ -324,13 +324,9 @@ public class PixelShot {
 
 
         private void saveScoopedStorage() {
-
-
-            String directory;
-            if (path == null) {
-                directory = Environment.DIRECTORY_PICTURES;
-            } else {
-                directory = Environment.DIRECTORY_PICTURES + File.separator + path;
+            String directory = Environment.DIRECTORY_PICTURES;
+            if (path != null) {
+                directory += File.separator + path;
             }
 
             ContentResolver resolver = weakContext.get().getContentResolver();
