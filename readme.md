@@ -10,7 +10,7 @@ Note: Taking an image of a SurfaceView is only supported from `minApi 24`
 ## Example of simplest usage:
 
 Filename will be named from a timestamp.   
-Path will default to `/Pictures` in internal storage.   
+Path will default to `/Pictures` in saveInternal storage.
 Image format will default to `.JPG`
 
 ```java
