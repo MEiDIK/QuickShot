@@ -194,17 +194,6 @@ public class PixelShot {
      */
 
     public void save() throws NullPointerException {
-
-        //TODO Is it the libraries responsibility to handle this?
-        if (!Utils.isStorageAvailable()) {
-            throw new IllegalStateException("Storage not available for use");
-        }
-
-        //TODO Is it the libraries responsibility to handle this?
-        if (!Utils.isPermissionGranted(getAppContext())) {
-            throw new SecurityException("Permission WRITE_EXTERNAL_STORAGE not granted");
-        }
-
         if (view instanceof SurfaceView) {
             PixelCopyHelper.getSurfaceBitmap((SurfaceView) view, new PixelCopyHelper.PixelCopyListener() {
                 @Override
@@ -355,6 +344,7 @@ public class PixelShot {
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             if (imageUri != null) {
+                //TODO is there a better solution here?
                 file = new File(directory, filename + fileExtension);
                 try (OutputStream out = resolver.openOutputStream(imageUri)) {
                     switch (fileExtension) {
@@ -368,6 +358,7 @@ public class PixelShot {
                 } catch (Exception e) {
                     e.printStackTrace();
                     cancelTask();
+                    file = null;
                 } finally {
                     bitmap.recycle();
                     bitmap = null;
@@ -377,6 +368,7 @@ public class PixelShot {
 
         @Override
         protected Void doInBackground(Void... voids) {
+            //Todo can this be improved?
             if (Utils.isAndroidQ() && !saveInternal) {
                 saveScoopedStorage();
             } else {
@@ -389,10 +381,14 @@ public class PixelShot {
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
             weakContext.clear();
-            if (file != null) {
-                listener.onPixelShotSuccess(file.getAbsolutePath());
-            } else {
-                listener.onPixelShotFailed();
+
+            //TODO rememeber to check file.exist()
+            if (listener != null) {
+                if (file != null) {
+                    listener.onPixelShotSuccess(file.getAbsolutePath());
+                } else {
+                    listener.onPixelShotFailed();
+                }
             }
         }
     }
