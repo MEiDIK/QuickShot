@@ -63,7 +63,7 @@ public class PixelShot {
 
     //TODO remove non-responsible code
     //TODO implement full javadoc
-
+    //TODO Code improvements and clean-ups in all classes.
 
     private PixelShot(@NonNull View view) {
         this.view = view;
