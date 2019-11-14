@@ -5,7 +5,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.drawable.Drawable;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -20,7 +20,6 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
-import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -61,7 +60,6 @@ public class PixelShot {
     private Bitmap bitmap;
     private View view;
 
-    //TODO remove non-responsible code
     //TODO implement full javadoc
     //TODO Code improvements and clean-ups in all classes.
 
@@ -176,9 +174,6 @@ public class PixelShot {
             view.draw(canvas);
             canvas.setBitmap(null);
             return bitmap;
-        } else if (view instanceof RecyclerView) {
-            bitmap = generateLongBitmap((RecyclerView) view);
-            return bitmap;
         } else {
             bitmap = Bitmap.createBitmap(view.getWidth(), view.getHeight(), Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
@@ -203,6 +198,7 @@ public class PixelShot {
 
                 @Override
                 public void onSurfaceBitmapError() {
+                    //TODO do we need this log here or will the execption handle it?
                     Log.d(TAG, "Couldn't create bitmap of the SurfaceView");
                     if (listener != null) {
                         listener.onPixelShotFailed();
@@ -214,57 +210,8 @@ public class PixelShot {
         }
     }
 
-
-    //TODO Is it the libraries responsibility to handle this?
-    private Bitmap generateLongBitmap(RecyclerView recyclerView) {
-
-        int itemCount = recyclerView.getAdapter().getItemCount();
-        RecyclerView.ViewHolder viewHolder = recyclerView.getAdapter().createViewHolder(recyclerView, 0);
-
-        //Measure the sizes of list item views to find out how big itemView should be
-        viewHolder.itemView.measure(View.MeasureSpec.makeMeasureSpec(recyclerView.getWidth(), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-
-        // Define measured widths/heights
-        int measuredItemHeight = viewHolder.itemView.getMeasuredHeight();
-        int measuredItemWidth = viewHolder.itemView.getMeasuredWidth();
-
-        //Set width/height of list item views
-        viewHolder.itemView.layout(0, 0, measuredItemWidth, measuredItemHeight);
-
-        //Create the Bitmap and Canvas to draw on
-        Bitmap recyclerViewBitmap = Bitmap.createBitmap(recyclerView.getMeasuredWidth(), measuredItemHeight * itemCount, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(recyclerViewBitmap);
-
-        //Draw RecyclerView Background:
-        if (recyclerView.getBackground() != null) {
-            Drawable drawable = recyclerView.getBackground().mutate();
-            drawable.setBounds(measuredItemWidth, measuredItemHeight * itemCount, 0, 0);
-            drawable.draw(canvas);
-        }
-
-        //Draw all list item views
-        int viewHolderTopPadding = 0;
-        for (int i = 0; i < itemCount; i++) {
-            recyclerView.getAdapter().onBindViewHolder(viewHolder, i);
-            viewHolder.itemView.setDrawingCacheEnabled(true);
-            viewHolder.itemView.buildDrawingCache();
-            canvas.drawBitmap(viewHolder.itemView.getDrawingCache(), 0f, viewHolderTopPadding, null);
-            viewHolderTopPadding += measuredItemHeight;
-            viewHolder.itemView.setDrawingCacheEnabled(false);
-            viewHolder.itemView.destroyDrawingCache();
-
-//            //TODO This should work but doesn't
-//            recyclerView.getAdapter().onBindViewHolder(viewHolder, i);
-//            viewHolder.itemView.draw(canvas);
-//            canvas.drawBitmap(recyclerViewBitmap, 0f, viewHolderTopPadding, null);
-//            viewHolderTopPadding += measuredItemHeight;
-        }
-        return recyclerViewBitmap;
-    }
-
     public interface PixelShotListener {
         void onPixelShotSuccess(String path);
-
         void onPixelShotFailed();
     }
 
@@ -304,13 +251,15 @@ public class PixelShot {
             }
         }
 
-        private void saveLegacy() {
+        private void save() {
             if (path == null) {
                 path = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES;
             }
+
             File directory = new File(path);
             if (!directory.exists() && !directory.mkdirs()) {
                 cancelTask();
+                return;
             }
             file = new File(directory, filename + fileExtension);
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
@@ -324,6 +273,8 @@ public class PixelShot {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+
+                //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
                 cancelTask();
             } finally {
                 bitmap.recycle();
@@ -332,7 +283,7 @@ public class PixelShot {
         }
 
 
-        private void saveScoopedStorage() {
+        private void saveExtScoopedStorage() {
             String directory = Environment.DIRECTORY_PICTURES;
             if (path != null) {
                 directory += File.separator + path;
@@ -344,7 +295,6 @@ public class PixelShot {
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             if (imageUri != null) {
-                //TODO is there a better solution here?
                 file = new File(directory, filename + fileExtension);
                 try (OutputStream out = resolver.openOutputStream(imageUri)) {
                     switch (fileExtension) {
@@ -357,6 +307,8 @@ public class PixelShot {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+
+                    //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
                     cancelTask();
                     file = null;
                 } finally {
@@ -368,11 +320,10 @@ public class PixelShot {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            //Todo can this be improved?
             if (Utils.isAndroidQ() && !saveInternal) {
-                saveScoopedStorage();
+                saveExtScoopedStorage();
             } else {
-                saveLegacy();
+                save();
             }
             return null;
         }
@@ -380,15 +331,16 @@ public class PixelShot {
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            weakContext.clear();
-
-            //TODO rememeber to check file.exist()
-            if (listener != null) {
-                if (file != null) {
+            if (listener != null && file != null) {
+                if (Utils.isAndroidQ()) {
                     listener.onPixelShotSuccess(file.getAbsolutePath());
-                } else {
-                    listener.onPixelShotFailed();
+                } else if (file.exists()) {
+                    MediaScannerConnection.scanFile(weakContext.get(), new String[]{file.getAbsolutePath()}, null, null);
+                    listener.onPixelShotSuccess(file.getAbsolutePath());
                 }
+            } else if (listener != null) {
+                //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
+                listener.onPixelShotFailed();
             }
         }
     }

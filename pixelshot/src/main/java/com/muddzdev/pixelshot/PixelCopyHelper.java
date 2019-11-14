@@ -12,11 +12,12 @@ import androidx.annotation.NonNull;
 
 class PixelCopyHelper {
 
-    public static void getSurfaceBitmap(@NonNull SurfaceView surfaceView, @NonNull final PixelCopyListener listener) {
+    static void getSurfaceBitmap(@NonNull SurfaceView surfaceView, @NonNull final PixelCopyListener listener) {
         final Bitmap bitmap = Bitmap.createBitmap(surfaceView.getWidth(), surfaceView.getHeight(), Bitmap.Config.ARGB_8888);
         final HandlerThread handlerThread = new HandlerThread(PixelCopyHelper.class.getSimpleName());
         handlerThread.start();
 
+//TODO is this check nessecery or should we just rely on exceptions?
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             PixelCopy.request(surfaceView, bitmap, new PixelCopy.OnPixelCopyFinishedListener() {
                 @Override
@@ -30,6 +31,7 @@ class PixelCopyHelper {
                 }
             }, new Handler(handlerThread.getLooper()));
         } else {
+            //TODO do we need this log here or should we throw an exception here?
             Log.d(PixelShot.class.getSimpleName(), "Saving an image of a SurfaceView is only supported from API 24");
         }
     }
