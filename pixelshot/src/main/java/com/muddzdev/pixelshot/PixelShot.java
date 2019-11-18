@@ -60,8 +60,10 @@ public class PixelShot {
     private Bitmap bitmap;
     private View view;
 
-    //TODO implement full javadoc
-    //TODO Code improvements and clean-ups in all classes.
+    //TODO fix error handling
+    //TODO When should we log vs crash vs throw exception
+    //TODO Refactor PixelShotTest
+    //TODO Name change
 
     private PixelShot(@NonNull View view) {
         this.view = view;
@@ -80,7 +82,7 @@ public class PixelShot {
     }
 
     /**
-     * @param filename if not set, filename will default to a timestamp from {@link System#currentTimeMillis} at time of execution.
+     * @param filename if not set, will default to a timestamp from {@link System#currentTimeMillis}
      */
     public PixelShot setFilename(String filename) {
         this.filename = filename;
@@ -88,10 +90,9 @@ public class PixelShot {
     }
 
     /**
-     * For devices running Android Q/API 29 and higher, files will now be saved relative to the public storage of /storage/Pictures.
+     * For devices running Android Q/API 29 and higher, files will now be saved relative to the public storage of /storage/Pictures due to Android's new 'Scooped storage'.
      * <p>Directories which don't already exist will be automatically created.</p>
-     *
-     * @param path if not set, path will default to /Pictures regardless of API level
+     * @param path if not set, path will default to /Pictures regardless of any API level
      */
     public PixelShot setPath(String path) {
         this.path = path;
@@ -100,8 +101,7 @@ public class PixelShot {
 
     /**
      * Only for devices running Android Q/API 29 and higher!
-     *
-     * @param path relative to the apps private storage
+     * @param path relative to the apps internal storage
      */
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -185,6 +185,7 @@ public class PixelShot {
 
 
     /**
+     * save() runs in a asynchronous thread
      * @throws NullPointerException if View is null.
      */
 
