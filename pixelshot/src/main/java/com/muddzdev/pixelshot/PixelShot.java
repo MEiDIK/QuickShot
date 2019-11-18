@@ -60,7 +60,6 @@ public class PixelShot {
     private Bitmap bitmap;
     private View view;
 
-    //TODO fix error handling
     //TODO When should we log vs crash vs throw exception
     //TODO Refactor PixelShotTest
     //TODO Name change
@@ -92,6 +91,7 @@ public class PixelShot {
     /**
      * For devices running Android Q/API 29 and higher, files will now be saved relative to the public storage of /storage/Pictures due to Android's new 'Scooped storage'.
      * <p>Directories which don't already exist will be automatically created.</p>
+     *
      * @param path if not set, path will default to /Pictures regardless of any API level
      */
     public PixelShot setPath(String path) {
@@ -101,6 +101,7 @@ public class PixelShot {
 
     /**
      * Only for devices running Android Q/API 29 and higher!
+     *
      * @param path relative to the apps internal storage
      */
 
@@ -186,6 +187,7 @@ public class PixelShot {
 
     /**
      * save() runs in a asynchronous thread
+     *
      * @throws NullPointerException if View is null.
      */
 
@@ -213,6 +215,7 @@ public class PixelShot {
 
     public interface PixelShotListener {
         void onPixelShotSuccess(String path);
+
         void onPixelShotFailed();
     }
 
@@ -240,28 +243,13 @@ public class PixelShot {
             this.listener = listener;
         }
 
-        private void cancelTask() {
-            cancel(true);
-            if (listener != null) {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        listener.onPixelShotFailed();
-                    }
-                });
-            }
-        }
-
         private void save() {
             if (path == null) {
                 path = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES;
             }
 
             File directory = new File(path);
-            if (!directory.exists() && !directory.mkdirs()) {
-                cancelTask();
-                return;
-            }
+            directory.mkdirs();
             file = new File(directory, filename + fileExtension);
             try (OutputStream out = new BufferedOutputStream(new FileOutputStream(file))) {
                 switch (fileExtension) {
@@ -274,26 +262,24 @@ public class PixelShot {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-
-                //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
-                cancelTask();
+                cancel(true);
             } finally {
                 bitmap.recycle();
                 bitmap = null;
             }
         }
-
-
-        private void saveExtScoopedStorage() {
+        private void saveScoopedStorage() {
             String directory = Environment.DIRECTORY_PICTURES;
-            if (path != null) {
-                directory += File.separator + path;
-            }
+            directory = path != null ? directory + File.separator + path : directory;
+            Log.d(TAG, directory);
+
             ContentResolver resolver = weakContext.get().getContentResolver();
             ContentValues contentValues = new ContentValues();
             contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
+
+            //TODO imageURI returns null, when you delete the file you inserted and readded it
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             if (imageUri != null) {
                 file = new File(directory, filename + fileExtension);
@@ -308,10 +294,7 @@ public class PixelShot {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-
-                    //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
-                    cancelTask();
-                    file = null;
+                    cancel(true);
                 } finally {
                     bitmap.recycle();
                     bitmap = null;
@@ -320,9 +303,21 @@ public class PixelShot {
         }
 
         @Override
+        protected void onCancelled() {
+            if (listener != null) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        listener.onPixelShotFailed();
+                    }
+                });
+            }
+        }
+
+        @Override
         protected Void doInBackground(Void... voids) {
             if (Utils.isAndroidQ() && !saveInternal) {
-                saveExtScoopedStorage();
+                saveScoopedStorage();
             } else {
                 save();
             }
@@ -340,7 +335,6 @@ public class PixelShot {
                     listener.onPixelShotSuccess(file.getAbsolutePath());
                 }
             } else if (listener != null) {
-                //TODO How do we handle this situation where we get 2x calls to listener.onPixelShotFailed();?
                 listener.onPixelShotFailed();
             }
         }

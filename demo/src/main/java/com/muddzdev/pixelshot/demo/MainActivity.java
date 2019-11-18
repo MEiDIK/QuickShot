@@ -60,10 +60,10 @@ public class MainActivity extends AppCompatActivity implements PixelShot.PixelSh
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_jpg:
-                PixelShot.of(getTargetView()).setInternalPath(getExternalStorage()).setFilename("getExternalStorage()").setResultListener(this).save();
+                PixelShot.of(getTargetView()).setFilename("external1").setResultListener(this).save();
                 break;
             case R.id.menu_pgn:
-                PixelShot.of(getTargetView()).setInternalPath(getInternalStorage()).setFilename("getInternalStorage()").setResultListener(this).toPNG().save();
+                PixelShot.of(getTargetView()).setPath("PixelShot/Images").setFilename("internal2").setResultListener(this).toPNG().save();
                 break;
             case R.id.menu_nomedia:
                 PixelShot.of(getTargetView()).setPath("SexyShot").setFilename("sexyShot").setResultListener(this).toJPG().save();
