@@ -60,10 +60,6 @@ public class PixelShot {
     private Bitmap bitmap;
     private View view;
 
-    //TODO When should we log vs crash vs throw exception
-    //TODO Refactor PixelShotTest
-    //TODO Name change
-
     private PixelShot(@NonNull View view) {
         this.view = view;
     }
@@ -81,7 +77,7 @@ public class PixelShot {
     }
 
     /**
-     * @param filename if not set, will default to a timestamp from {@link System#currentTimeMillis}
+     * @param filename if not set, filename defaults to a timestamp from {@link System#currentTimeMillis}
      */
     public PixelShot setFilename(String filename) {
         this.filename = filename;
@@ -92,7 +88,7 @@ public class PixelShot {
      * For devices running Android Q/API 29 and higher, files will now be saved relative to the public storage of /storage/Pictures due to Android's new 'Scooped storage'.
      * <p>Directories which don't already exist will be automatically created.</p>
      *
-     * @param path if not set, path will default to /Pictures regardless of any API level
+     * @param path if not set, path defaults to /Pictures regardless of any API level
      */
     public PixelShot setPath(String path) {
         this.path = path;
@@ -160,10 +156,9 @@ public class PixelShot {
 
     private Context getAppContext() {
         if (view == null) {
-            throw new NullPointerException("The provided View was null");
-        } else {
-            return view.getContext().getApplicationContext();
+            throw new NullPointerException("Attempt to save the view failed: view was null");
         }
+        return view.getContext().getApplicationContext();
     }
 
     private Bitmap getBitmap() {
@@ -201,8 +196,6 @@ public class PixelShot {
 
                 @Override
                 public void onSurfaceBitmapError() {
-                    //TODO do we need this log here or will the execption handle it?
-                    Log.d(TAG, "Couldn't create bitmap of the SurfaceView");
                     if (listener != null) {
                         listener.onPixelShotFailed();
                     }
@@ -247,7 +240,6 @@ public class PixelShot {
             if (path == null) {
                 path = Environment.getExternalStorageDirectory() + File.separator + Environment.DIRECTORY_PICTURES;
             }
-
             File directory = new File(path);
             directory.mkdirs();
             file = new File(directory, filename + fileExtension);
@@ -268,6 +260,7 @@ public class PixelShot {
                 bitmap = null;
             }
         }
+
         private void saveScoopedStorage() {
             String directory = Environment.DIRECTORY_PICTURES;
             directory = path != null ? directory + File.separator + path : directory;
@@ -279,7 +272,6 @@ public class PixelShot {
             contentValues.put(MediaStore.MediaColumns.MIME_TYPE, Utils.getMimeType(fileExtension));
             contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, directory);
 
-            //TODO imageURI returns null, when you delete the file you inserted and readded it
             Uri imageUri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues);
             if (imageUri != null) {
                 file = new File(directory, filename + fileExtension);
@@ -299,6 +291,8 @@ public class PixelShot {
                     bitmap.recycle();
                     bitmap = null;
                 }
+            } else {
+                Log.e(TAG, "Couldn't save image: ContentResolver returned a null Uri");
             }
         }
 

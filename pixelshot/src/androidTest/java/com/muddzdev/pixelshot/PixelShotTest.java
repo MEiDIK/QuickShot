@@ -2,10 +2,11 @@ package com.muddzdev.pixelshot;
 
 import android.Manifest;
 import android.graphics.Color;
+import android.view.View;
+
 import androidx.test.InstrumentationRegistry;
 import androidx.test.rule.GrantPermissionRule;
 import androidx.test.runner.AndroidJUnit4;
-import android.view.View;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -36,7 +37,7 @@ public class PixelShotTest {
         PixelShot.of(testView).setResultListener(new PixelShot.PixelShotListener() {
             @Override
             public void onPixelShotSuccess(String path) {
-                Assert.assertNotNull("Test path was null", path);
+                Assert.assertNotNull(path);
             }
 
             @Override
@@ -52,7 +53,7 @@ public class PixelShotTest {
         PixelShot.of(testView).setResultListener(new PixelShot.PixelShotListener() {
             @Override
             public void onPixelShotSuccess(String path) {
-                Assert.assertTrue("Test for saving in JPG failed", path.contains(".jpg"));
+                Assert.assertTrue(path.contains(".jpg"));
             }
 
             @Override
@@ -67,7 +68,7 @@ public class PixelShotTest {
         PixelShot.of(testView).toPNG().setResultListener(new PixelShot.PixelShotListener() {
             @Override
             public void onPixelShotSuccess(String path) {
-                Assert.assertTrue("Test for saving in .PNG failed", path.contains(".png"));
+                Assert.assertTrue(path.contains(".png"));
             }
 
             @Override
@@ -83,7 +84,7 @@ public class PixelShotTest {
         PixelShot.of(testView).toNomedia().setResultListener(new PixelShot.PixelShotListener() {
             @Override
             public void onPixelShotSuccess(String path) {
-                Assert.assertTrue("Test for saving in .nomedia failed", path.contains(".nomedia"));
+                Assert.assertTrue(path.contains(".nomedia"));
             }
 
             @Override
@@ -95,7 +96,7 @@ public class PixelShotTest {
 
 
     @Test
-    public void testIfDirectoryExist() {
+    public void testIfDirectoryWasCreated() {
         PixelShot.of(testView).setPath("PixelShotTestDirectory").setResultListener(new PixelShot.PixelShotListener() {
             @Override
             public void onPixelShotSuccess(String path) {
@@ -149,7 +150,7 @@ public class PixelShotTest {
 
     private void sleepThread() {
         try {
-            Thread.sleep(2000);
+            Thread.sleep(1500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
